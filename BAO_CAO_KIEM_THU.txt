@@ -1,0 +1,71 @@
+BAO CAO KIEM THU - SAN CHUNG KHOAN WEB 0.2.1-TRIAL
+==================================================
+
+KET QUA KIEM THU TU DONG
+- 13/13 bai tests/test_web_app.py: DAT.
+- 11/11 bai tests/test_web_features.py: DAT.
+- 2/2 bai tests/test_render_bootstrap.py: DAT.
+- Tong cong: 26/26 bai test dat khi chay tung bo test rieng.
+- python -m py_compile main.py extended.py bootstrap_owner.py: DAT.
+- node --check static/app.js: DAT.
+- render.yaml duoc doc va kiem tra: plan=free, khong gan Persistent Disk, co healthCheckPath.
+- Test dung FastAPI TestClient va SQLite tam, khong dung database that cua nguoi dung.
+- Chua chay kiem thu trinh duyet end-to-end tren Chrome/Edge that; chua deploy len Render tu tai khoan nguoi dung.
+
+CAC NHOM DA KIEM THU
+1. Owner dang nhap va doc duoc du bao 6 moc.
+2. Owner tao tai khoan; ID tai khoan co dung 8 chu so.
+3. Chan tao them Owner va chan thanh vien goi API tam dung toan san.
+4. Nhieu tai khoan doc cung gia BTC tu mot market process.
+5. Owner tam dung: global_state duoc luu va engine khong tang tick/gia.
+6. Mua BTC cap nhat so du va so luong tai san cua tai khoan hien tai.
+7. Mat khau khong luu dang chu thuong; PBKDF2-HMAC-SHA256 + salt.
+8. Sau 5 lan dang nhap sai, IP + username bi khoa tam thoi.
+9. Trang web va health endpoint phan hoi.
+10. Du bao Owner dung lich gia da lap truoc; lich du bao 1 ngay duoc noi dai.
+11. WebSocket xac thuc nhan snapshot thi truong chung.
+12. Ho so va cai dat duoc luu.
+13. Chuyen tien khau tru 15%; xac minh ID va ten nguoi nhan.
+14. Cho no chuyen du tien va tao ho so khoan no.
+15. Owner thang cap role theo bac va cap SPADMIN.
+16. TỌA ĐỘ nhan goi ĐỒNG va thuong vai tro khong bi cong lap khi tai lai.
+17. CHAT QTV chan tai khoan khong co quyen.
+18. Owner audit va tai backup duoc; endpoint bao ve theo role.
+19. RUBY co 3 luot mien phat tron doi; cap lai khong nap lai luot.
+20. Thuong ngau nhien goi nam BACH KIM chi duoc tra mot lan moi ngay.
+21. Owner support session co ghi nhat ky va co the ket thuc.
+22. Dieu chinh vi tu minh chi cho phep role quan tri va co gioi han.
+23. Giao dien dung tieu de SAN CHUNG KHOAN.
+24. Owner bootstrap tren Render chi tao Owner khi database chua co Owner.
+25. Owner bootstrap tu choi mat khau yeu va khong luu mat khau dang chu thuong.
+26. Health endpoint thong bao trial mode de giao dien hien canh bao mat du lieu.
+
+BAO MAT HIEN CO
+- Khong co dang ky cong khai; Owner cap tai khoan.
+- Session token ngau nhien; chi luu SHA-256 cua token trong SQLite.
+- Cookie HttpOnly + SameSite=Strict; COOKIE_SECURE bat khi HTTPS.
+- API thay doi du lieu kiem tra Origin neu co.
+- Phan quyen duoc kiem tra tai server, khong chi an nut tren giao dien.
+- Gioi han dang nhap sai theo IP + ten tai khoan.
+- Khong hien thi mat khau trong man hinh quan tri.
+- Dung so tien theo integer cents de tranh sai so thap phan cho so du.
+- Owner Render duoc tao qua bien moi truong bi mat, khong hard-code mat khau trong source.
+
+GIOI HAN CON LAI
+- Render Free tu ngu sau 15 phut khong co inbound traffic; khong bao dam chay 24/7.
+- Render Free khong co Persistent Disk; SQLite tai /tmp co the mat khi spin-down, restart hoac redeploy.
+- Chua chuyen SQLite sang PostgreSQL. Khong dung tai khoan that hay du lieu quan trong tren ban Free.
+- Owner co endpoint tai backup JSON; chua co giao dien restore backup.
+- Chua test E2E tren Chrome/Edge that.
+- Cac cu soc gia cuc doan va overlay/canh bao dac biet cua Pygame chua duoc chuyen day du.
+- Owner support tren web la phien xem thong tin co audit, chua thao tac moi man hinh duoi tai khoan dich.
+- Am thanh trinh duyet chua tuong duong chuong/overlay Pygame.
+- Mot so slider, modal va luong xac nhan desktop duoc don gian hoa thanh form web.
+- Chua nhap tu dong accounts_sandbox.json; khong co dong bo desktop/web.
+- Chua deploy cong khai; can nguoi dung tu ket noi repo Git va Render.
+
+KET LUAN
+- Day la ban web thu nghiem 0.2.1, da port nhieu nghiep vu chinh va dat 26 bai test tu dong khi chay tung bo.
+- Khong tuyen bo day la ban sao hoan hao 1:1 cua toan bo ung dung desktop.
+- Ban Render Free chi de thu giao dien/chuc nang voi du lieu demo. Sao luu truoc buoi thu; tai khoan/phien du lieu co the mat do storage tam.
+- Chua phai he thong tai chinh thuc te; chi dung USD ao, khong nap/rut hay giao dich tien that.

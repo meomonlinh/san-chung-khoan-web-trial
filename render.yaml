@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: san-chung-khoan-trial
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_PATH
+        value: /tmp/market_web.sqlite3
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRIAL_MODE
+        value: "true"
+      - key: INITIAL_OWNER_USERNAME
+        sync: false
+      - key: INITIAL_OWNER_PASSWORD
+        sync: false

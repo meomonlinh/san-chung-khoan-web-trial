@@ -1,0 +1,45 @@
+HUONG DAN BAT DAU - SAN CHUNG KHOAN WEB 0.2
+===========================================
+
+A. CAI BAN WEB MOI
+1. Giai nen san_chung_khoan_web_full.zip vao mot thu muc moi.
+2. Chay install_windows.bat va doi den khi bao cai dat hoan tat.
+
+B. GIU TAI KHOAN OWNER DA TAO O BAN THU NGHIEM 0.1
+1. Quay lai cua so CMD dang chay ban cu va nhan Ctrl+C de dung server.
+2. Mo thu muc ban cu: san_chung_khoan_web_tai_lai\san_chung_khoan_web.
+3. Copy nguyen thu muc data.
+4. Paste thu muc data do vao san_chung_khoan_web_full.
+5. Chon gop/ghi de neu Windows hoi; khong xoa ban cu.
+6. Khong chay create_owner_windows.bat neu da copy database, vi Owner cu da ton tai.
+
+C. NEU MUON BAT DAU DATABASE MOI
+1. Khong copy data cua ban cu.
+2. Chay create_owner_windows.bat.
+3. Tu dat ten dang nhap va mat khau rieng cho Owner; khong gui mat khau cho bat ky ai.
+
+D. KHOI DONG
+1. Chay run_windows.bat.
+2. Cho den khi CMD hien Uvicorn running.
+3. Mo Chrome/Edge tai http://127.0.0.1:8001.
+4. Dang nhap bang tai khoan Owner da giu lai hoac tai khoan Owner moi.
+5. Giu cua so CMD mo trong khi su dung web.
+
+DUNG SERVER
+- Quay lai cua so CMD chay server va nhan Ctrl+C.
+- Khong xoa thu muc data neu muon giu tai khoan, so du, giao dich, chat va lich su.
+
+QUAN TRONG
+- Ban 0.1 van duoc giu nguyen, chay tren cong 8000.
+- Ban 0.2 chay tren cong 8001 va dung database rieng trong thu muc data.
+- Chi sao chep thu muc data; khong di chuyen hay xoa ban cu.
+- Ban Pygame va ban web khong tu dong dong bo accounts_sandbox.json.
+- Day la san mo phong, chi dung USD ao.
+
+
+E. RENDER FREE — CHI THU NGHIEM
+1. Doc RENDER_FREE_TRIAL.txt truoc.
+2. Khong tai len database cu hoac dung mat khau Owner local.
+3. Khi tao Blueprint tren Render, nhap INITIAL_OWNER_USERNAME va INITIAL_OWNER_PASSWORD bang mat khau demo rieng.
+4. Chi su dung tai khoan demo; du lieu co the mat khi dich vu ngu hoac khoi dong lai.
+5. Khong coi Render Free la dich vu 24/7 va khong dua vao do de luu du lieu quan trong.
