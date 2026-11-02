@@ -27,8 +27,11 @@ from pydantic import BaseModel, Field
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+REQUIRE_DATABASE_URL = os.getenv("REQUIRE_DATABASE_URL", "false").lower() == "true"
 DB_PATH = Path(os.getenv("DATABASE_PATH", str(BASE_DIR / "data" / "market_web.sqlite3")))
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+if not DATABASE_URL:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 TZ = ZoneInfo("Asia/Bangkok")
 COOKIE_NAME = "market_session"
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
@@ -107,7 +110,7 @@ async def app_lifespan(application):
                 pass
         persist_market_state()
 
-app = FastAPI(title="SÀN CHỨNG KHOÁN", version="0.2.1-trial", lifespan=app_lifespan)
+app = FastAPI(title="SÀN CHỨNG KHOÁN", version="0.2.2-registration-trial", lifespan=app_lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # Shared process-wide market. Every authenticated browser reads this same object.
@@ -125,6 +128,21 @@ sim_task: asyncio.Task | None = None
 
 @contextmanager
 def db():
+    """Use durable PostgreSQL when DATABASE_URL is configured; retain SQLite for local Windows runs.
+
+    Render Free's local filesystem is ephemeral. REQUIRE_DATABASE_URL prevents accidentally
+    launching a cloud trial against /tmp SQLite and silently losing player data after restart.
+    """
+    if DATABASE_URL:
+        from db_compat import connect_postgres
+        conn = connect_postgres(DATABASE_URL)
+        try:
+            yield conn
+        finally:
+            conn.close()
+        return
+    if REQUIRE_DATABASE_URL:
+        raise RuntimeError("DATABASE_URL chưa được cấu hình. Hãy kết nối PostgreSQL bền vững trước khi chạy bản cloud.")
     conn = sqlite3.connect(DB_PATH, timeout=15, isolation_level=None)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
@@ -185,6 +203,11 @@ def init_db() -> None:
             failures INTEGER NOT NULL,
             window_started REAL NOT NULL,
             locked_until REAL NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS registration_limits (
+            attempt_key TEXT PRIMARY KEY,
+            created_count INTEGER NOT NULL,
+            window_started REAL NOT NULL
         );
         CREATE TABLE IF NOT EXISTS global_state (
             key TEXT PRIMARY KEY,
@@ -442,6 +465,12 @@ class LoginBody(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class RegisterBody(BaseModel):
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
+    password: str = Field(min_length=10, max_length=128)
+    display_name: str = Field(default="", max_length=50)
+
+
 class AccountCreateBody(BaseModel):
     username: str = Field(min_length=3, max_length=32)
     password: str = Field(min_length=10, max_length=128)
@@ -465,13 +494,90 @@ async def index() -> FileResponse:
 
 
 @app.get("/api/health")
-async def health() -> dict[str, str]:
+async def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "service": "san-chung-khoan",
-        "version": "0.2.1-trial",
+        "version": "0.2.3-persistent-db-trial",
         "trial_mode": "true" if os.getenv("TRIAL_MODE", "false").lower() == "true" else "false",
+        "database_backend": "postgresql" if DATABASE_URL else "sqlite",
+        "persistent_storage": bool(DATABASE_URL),
     }
+
+
+@app.post("/api/register")
+async def register(body: RegisterBody, request: Request) -> JSONResponse:
+    """Public self-registration. New accounts are always ordinary members."""
+    check_same_origin(request)
+    username = body.username.strip()
+    display_name = body.display_name.strip()[:50] or username
+    client_ip = request.client.host if request.client else "unknown"
+    attempt_key = hashlib.sha256(f"register|{client_ip}".encode()).hexdigest()
+    now_ts = time.time()
+    password_hash, salt = hash_password(body.password)
+    token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    expires = utc_now() + timedelta(hours=SESSION_HOURS)
+
+    with db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            existing = conn.execute("SELECT id FROM users WHERE username=? COLLATE NOCASE", (username,)).fetchone()
+            if existing:
+                raise HTTPException(409, "Tên đăng nhập đã tồn tại. Hãy chọn tên khác.")
+
+            limit = conn.execute(
+                "SELECT created_count,window_started FROM registration_limits WHERE attempt_key=?",
+                (attempt_key,),
+            ).fetchone()
+            if limit and now_ts - float(limit["window_started"]) < 3600:
+                created_count = int(limit["created_count"])
+                window_started = float(limit["window_started"])
+                if created_count >= 10:
+                    raise HTTPException(429, "Địa chỉ mạng này đã tạo quá nhiều tài khoản trong 1 giờ. Hãy thử lại sau.")
+                created_count += 1
+            else:
+                created_count = 1
+                window_started = now_ts
+
+            account_id = None
+            for _ in range(1000):
+                candidate = f"{secrets.randbelow(100_000_000):08d}"
+                exists = conn.execute("SELECT 1 FROM users WHERE account_id=?", (candidate,)).fetchone()
+                if not exists:
+                    account_id = candidate
+                    break
+            if account_id is None:
+                raise HTTPException(503, "Chưa tạo được ID tài khoản. Hãy thử lại.")
+
+            cur = conn.execute(
+                "INSERT INTO users(username,password_hash,salt,role,account_id,display_name,balance_cents,created_at) VALUES(?,?,?,?,?,?,?,?)",
+                (username, password_hash, salt, "member", account_id, display_name, 50_000_000, utc_now().isoformat()),
+            )
+            user_id = int(cur.lastrowid)
+            conn.executemany(
+                "INSERT INTO holdings(user_id,symbol,quantity) VALUES(?,?,0)",
+                [(user_id, sym) for sym in ASSETS],
+            )
+            conn.execute(
+                "INSERT INTO registration_limits(attempt_key,created_count,window_started) VALUES(?,?,?) "
+                "ON CONFLICT(attempt_key) DO UPDATE SET created_count=excluded.created_count,window_started=excluded.window_started",
+                (attempt_key, created_count, window_started),
+            )
+            conn.execute(
+                "INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)",
+                (token_hash, user_id, expires.isoformat(), utc_now().isoformat()),
+            )
+            user = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+
+    response = JSONResponse({"ok": True, "user": public_user(user), "message": "Tạo tài khoản thành công."})
+    response.set_cookie(COOKIE_NAME, token, httponly=True, secure=COOKIE_SECURE,
+                        samesite="strict", max_age=SESSION_HOURS * 3600, path="/")
+    return response
 
 
 @app.post("/api/login")

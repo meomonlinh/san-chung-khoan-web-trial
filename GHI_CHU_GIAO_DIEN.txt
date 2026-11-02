@@ -1,0 +1,20 @@
+SÀN CHỨNG KHOÁN WEB 0.2.4 – TINH GỌN GIAO DIỆN
+
+Đã lược bỏ các chú thích lặp lại hoặc mang tính nội bộ:
+- Dòng “Giá và thưởng theo bản code chính...” ở trang Premium.
+- Các nhãn tiếng Anh lặp lại tên trang.
+- Lời nhắc giả lập bị lặp ở màn hình đăng nhập và khu vực mua/bán.
+- Dòng giải thích điều chỉnh ví đã trùng với nội dung nút.
+- Gợi ý dự báo chung chung dưới phần phân tích thị trường.
+- Đoạn mô tả dài ở đầu trang Quản trị Owner và Kiểm duyệt.
+
+Đã giữ lại những thông tin ảnh hưởng trực tiếp tới thao tác hoặc quyền lợi:
+- Banner cảnh báo môi trường thử nghiệm, máy chủ có thể ngủ/khởi động lại và chỉ dùng USD ảo.
+- Quyền mặc định, số dư ban đầu và ID khi đăng ký.
+- Thưởng hằng ngày và thời gian dự báo của từng gói Premium.
+- Phụ phí 15% khi tặng Premium.
+- Tỷ lệ nhận tiền khi chuyển tiền, điều kiện cho nợ và xác minh ID người nhận.
+- Điều kiện cấp RUBY/LỤC BẢO, thời hạn quà Lục Bảo.
+- Quyền truy cập phòng chat và ghi nhật ký phiên hỗ trợ Owner.
+
+Không thay đổi logic giao dịch, phân quyền, đăng ký, lưu trữ hoặc cơ sở dữ liệu trong bản tinh gọn này.

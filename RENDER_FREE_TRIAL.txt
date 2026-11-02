@@ -1,39 +1,43 @@
-SÀN CHỨNG KHOÁN WEB 0.2.1 — RENDER FREE TRIAL
-============================================
+SÀN CHỨNG KHOÁN WEB 0.2.4 — RENDER FREE + POSTGRESQL
+===================================================
 
 MỤC TIÊU
-- Dùng Render Free để xem trước website và cho một nhóm nhỏ thử giao diện/chức năng.
-- Không phải máy chủ luôn bật 24/7. Render Free tự ngủ sau 15 phút không có inbound traffic.
-- Khi người chơi đang mở website và đã đăng nhập, giao diện gửi yêu cầu cập nhật định kỳ 8 giây/lần; hoạt động người dùng bình thường sẽ tạo inbound traffic và giữ dịch vụ hoạt động. Không dùng bot/ping giả để né chính sách ngủ.
+- Render Free dùng để thử website; không phải máy chủ luôn bật 24/7.
+- Render Free tự ngủ sau 15 phút không có inbound traffic; khi có người truy cập lại cần khởi động.
+- Tài khoản, số dư, danh mục, giao dịch, chat và quản trị được lưu trong PostgreSQL bên ngoài khi cấu hình DATABASE_URL.
+- Mã nguồn vẫn hỗ trợ SQLite để chạy local trên Windows.
 
-CẢNH BÁO DỮ LIỆU
-- Render Free không hỗ trợ Persistent Disk. DATABASE_PATH trong render.yaml trỏ tới /tmp/market_web.sqlite3, là ổ tạm.
-- Dữ liệu tài khoản, số dư, lịch sử, tin nhắn và giá thị trường có thể mất khi dịch vụ ngủ, khởi động lại hoặc triển khai lại.
-- Render Free Postgres có thể dùng làm nơi lưu dữ liệu thử nghiệm nếu chuyển ứng dụng sang PostgreSQL, nhưng cơ sở dữ liệu Free do Render cấp hiện hết hạn sau 30 ngày và không có backup tích hợp. Bản 0.2.1 này CHƯA chuyển SQLite sang PostgreSQL.
-- Do đó, bản này chỉ dùng dữ liệu demo. Không nhập tài khoản Owner/ thành viên thật, không dùng mật khẩu đang sử dụng ở nơi khác, không dùng dữ liệu riêng tư quan trọng.
-- Hãy tải bản sao lưu từ công cụ Owner trước khi kết thúc buổi thử nghiệm. Bản web hiện có endpoint xuất backup; chưa có giao diện nhập/khôi phục backup.
+VÌ SAO ĐỔI CƠ SỞ DỮ LIỆU?
+- Render Free có filesystem tạm; SQLite đặt trong /tmp có thể bị xóa khi server khởi động lại, ngủ hoặc redeploy.
+- Bản 0.2.4 hỗ trợ PostgreSQL qua psycopg 3. Trên Render, REQUIRE_DATABASE_URL=true khiến server từ chối khởi động nếu chưa kết nối PostgreSQL, tránh âm thầm chạy vào SQLite tạm.
+- Có thể dùng một PostgreSQL provider có gói free để thử nghiệm. Ví dụ Neon Free có 1 GB lưu trữ và 100 CU-hours/tháng; compute tự scale-to-zero sau 5 phút không hoạt động nhưng dữ liệu lưu trữ vẫn giữ. Khi hết CU-hours, compute bị tạm ngưng cho tới kỳ tiếp theo hoặc nâng cấp, dữ liệu không bị xóa tự động.
+- Neon/nhà cung cấp DB có hạn mức và điều khoản riêng. Bố mẹ/người giám hộ nên cùng xem xét, đứng tên và quản lý tài khoản dịch vụ nếu cần.
 
-OWNER BAN ĐẦU TRÊN RENDER
-- Blueprint yêu cầu hai biến môi trường bí mật: INITIAL_OWNER_USERNAME và INITIAL_OWNER_PASSWORD.
-- Đặt tên Owner 3–32 ký tự, chỉ chữ/số/_/-. Mật khẩu 12–128 ký tự, gồm chữ và số.
-- Máy chủ chỉ tạo Owner nếu database chưa có Owner. Không ghi mật khẩu vào mã nguồn hay GitHub.
-- Vì SQLite của Free là tạm, hai biến môi trường cần giữ nguyên để Owner thử nghiệm có thể được tạo lại sau khi database bị mất. Các tài khoản demo khác sẽ không tự khôi phục.
+CẤU HÌNH RENDER
+1. Tạo PostgreSQL project/database ở nhà cung cấp phù hợp, dùng connection string dạng postgresql://... có sslmode=require.
+2. Giữ connection string riêng tư; không gửi cho người khác, không đưa vào GitHub, không chụp ảnh để lộ.
+3. Trong Render Web Service → Environment, thêm DATABASE_URL và dán connection string vào giá trị bí mật.
+4. Đặt REQUIRE_DATABASE_URL=true, COOKIE_SECURE=true, TRIAL_MODE=true.
+5. Giữ INITIAL_OWNER_USERNAME và INITIAL_OWNER_PASSWORD như đã thiết lập. Mật khẩu Owner 12–128 ký tự, có chữ và số; không dùng lại mật khẩu đang dùng ở website khác.
+6. Deploy lại. /api/health phải trả database_backend=postgresql và persistent_storage=true.
+7. Nếu health báo sqlite hoặc persistent_storage=false, KHÔNG nhập dữ liệu tài khoản thật/demo quan trọng; kiểm tra Environment trước.
 
-TRIỂN KHAI THỬ NGHIỆM
-1. Giữ nguyên thư mục bản Windows và database local làm bản dự phòng.
-2. Tạo một kho mã nguồn riêng tư trên GitHub, tải nội dung thư mục dự án lên đó. Không đưa database, .env, mật khẩu hoặc ảnh chụp riêng tư vào kho.
-3. Trên Render, tạo Blueprint từ kho mã nguồn; Render đọc render.yaml và tạo web service Free.
-4. Nhập INITIAL_OWNER_USERNAME và INITIAL_OWNER_PASSWORD ở phần biến môi trường bí mật theo prompt của Render. Không gửi hai giá trị này cho người khác.
-5. Chờ deploy thành công và health check /api/health trả status=ok.
-6. Mở URL Render, đăng nhập bằng Owner thử nghiệm rồi tạo vài tài khoản demo.
-7. Kiểm tra trên 2 trình duyệt/thiết bị: cùng giá thị trường, mua/bán, quyền Owner, chat, chuyển tiền và Premium.
-8. Trước khi dừng thử nghiệm, vào Owner và tải backup. Nhớ rằng bản hiện tại chưa có chức năng restore backup trên web.
+SAO LƯU VÀ CHUYỂN DỮ LIỆU TỪ BẢN 0.2.2
+1. Trước khi deploy bản mới, đăng nhập Owner trên website đang chạy.
+2. Mở Quản trị Owner → SAO LƯU DỮ LIỆU. Tải sanh-chung-khoan-backup.json về máy.
+3. Giữ file backup ở nơi riêng tư, không đưa lên GitHub. File chứa thông tin băm mật khẩu và dữ liệu người chơi.
+4. Cập nhật code và deploy bản 0.2.4. Database PostgreSQL mới sẽ tạo Owner đầu tiên từ các biến INITIAL_OWNER_*.
+5. Đăng nhập Owner mới, mở Quản trị Owner → KHÔI PHỤC BẢN SAO LƯU và chọn file JSON đã tải ở bước 2.
+6. Hệ thống xác nhận backup đúng định dạng, đúng một Owner và trùng username Owner đang đăng nhập; sau đó mới thay thế dữ liệu. Phiên Owner hiện tại được giữ lại.
+7. Kiểm tra số dư, tài sản, lịch sử và danh sách tài khoản. Giữ nguyên backup gốc tới khi kiểm tra xong.
 
-GIỚI HẠN FREE
-- Dịch vụ tự ngủ sau 15 phút không có inbound traffic, khởi động lại thường mất khoảng một phút.
-- Có giới hạn giờ chạy miễn phí theo workspace và hạn mức sử dụng nền tảng. Nếu vượt hạn mức, Render có thể tạm ngưng dịch vụ Free.
-- Không bảo đảm 24/7, không dùng cho dữ liệu sản xuất hoặc giao dịch tiền thật.
+ĐIỀU CHỈNH VÍ
+- OWNER: nút ĐIỀU CHỈNH VÍ QUẢN TRỊ ± USD xuất hiện ngay trong khung Ví trên trang Thị trường; trong Quản trị Owner, mỗi tài khoản có nút ± USD để chỉnh số dư của tài khoản đó.
+- SPADMIN/ADMIN: nút chỉnh ví cá nhân xuất hiện ngay trong khung Ví và trong Kiểm duyệt.
+- Thành viên/TỌA ĐỘ không được gọi API chỉnh ví quản trị. Máy chủ kiểm tra quyền; ẩn nút trên giao diện không phải lớp bảo vệ duy nhất.
 
-NÂNG CẤP SAU NÀY
-- Muốn dữ liệu bền vững: chuyển tầng lưu trữ SQLite sang PostgreSQL hoặc dịch vụ DB có chính sách tuổi/dung lượng phù hợp; sau đó kiểm thử migration/backup/restore.
-- Muốn luôn bật: dùng gói máy chủ không spin down và storage/DB bền vững; việc đó có thể phát sinh phí và cần người lớn xem xét thanh toán.
+GIỚI HẠN
+- Render Free vẫn ngủ sau 15 phút không có inbound traffic, không bảo đảm website luôn trực tuyến 24/7.
+- PostgreSQL giữ dữ liệu qua việc server web ngủ/khởi động lại, nhưng vẫn có giới hạn miễn phí và thời điểm bảo trì của nhà cung cấp.
+- Website chỉ mô phỏng thị trường và USD ảo; không xử lý tiền thật, nạp/rút tiền thật hoặc tài khoản ngân hàng.
+- Chưa thực hiện kiểm thử kết nối với database Neon thật trong môi trường build này. Cần xác nhận /api/health và làm giao dịch kiểm thử nhỏ sau khi gắn DATABASE_URL.

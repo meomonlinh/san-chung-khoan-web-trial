@@ -221,3 +221,64 @@ def test_admin_self_cash_adjustment_is_role_gated_and_bounded(client):
     assert adjusted.json()['balance'] == pytest.approx(before + 2500.50)
     too_large = client.post('/api/v2/admin/cash', json={"delta": "10000000000"})
     assert too_large.status_code == 400
+
+
+def test_owner_and_admin_wallet_adjustment_is_persisted_and_restricted(client):
+    login(client, "owner_test", "OwnerPassword!234")
+    before = client.get("/api/portfolio").json()["balance"]
+    adjusted = client.post("/api/v2/admin/cash", json={"delta": 1250.75})
+    assert adjusted.status_code == 200, adjusted.text
+    after = client.get("/api/portfolio").json()["balance"]
+    assert after == pytest.approx(before + 1250.75)
+
+    target = create_member(client, "member_cash_target")
+    changed = client.post(f"/api/v2/owner/accounts/{target['account_id']}/cash", json={"delta": 99.25})
+    assert changed.status_code == 200, changed.text
+    with main.db() as conn:
+        row = conn.execute("SELECT balance_cents FROM users WHERE account_id=?", (target["account_id"],)).fetchone()
+    assert row[0] == 50_009_925
+
+    client.post("/api/logout", json={})
+    login(client, "member_cash_target", "MemberPassword!234")
+    denied = client.post("/api/v2/admin/cash", json={"delta": 10})
+    assert denied.status_code == 403
+
+
+def test_wallet_adjust_control_is_on_market_wallet():
+    from pathlib import Path
+    html = (Path(__file__).resolve().parents[1] / "static" / "index.html").read_text(encoding="utf-8")
+    js = (Path(__file__).resolve().parents[1] / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'id="walletAdjustBtn"' in html
+    assert "walletAdjustBtn').addEventListener('click',adjustAdminCash)" in js
+
+
+def test_owner_backup_can_restore_balances_holdings_and_current_session(client):
+    login(client, "owner_test", "OwnerPassword!234")
+    member = create_member(client, "member_restore")
+    # Make both wallet and holdings non-default before taking the snapshot.
+    bought = client.post("/api/trade", json={"side": "buy", "symbol": "BTC", "quantity": 0.01})
+    assert bought.status_code == 200, bought.text
+    backup = client.get("/api/v2/owner/backup")
+    assert backup.status_code == 200, backup.text
+    payload = backup.json()
+    assert "global_state" in payload["tables"]
+
+    # Mutate wallet after backup, then restore it.
+    changed = client.post("/api/v2/admin/cash", json={"delta": 1234.56})
+    assert changed.status_code == 200, changed.text
+    result = client.post("/api/v2/owner/restore", json={"payload": payload})
+    assert result.status_code == 200, result.text
+    assert result.json()["restored_accounts"] == 2
+
+    # The existing browser session remains valid, and pre-backup data is back.
+    portfolio = client.get("/api/portfolio")
+    assert portfolio.status_code == 200
+    assert portfolio.json()["holdings"]["BTC"] == pytest.approx(0.01)
+    owner_me = client.get("/api/v2/me")
+    assert owner_me.status_code == 200
+    assert owner_me.json()["username"] == "owner_test"
+
+    # The registered member is restored with the same eight-digit ID.
+    with main.db() as conn:
+        restored = conn.execute("SELECT account_id FROM users WHERE username='member_restore'").fetchone()
+    assert restored[0] == member["account_id"]

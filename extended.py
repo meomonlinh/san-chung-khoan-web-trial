@@ -138,6 +138,8 @@ def _schema_migration() -> None:
             status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, reviewed_by INTEGER REFERENCES users(id), reviewed_at TEXT NOT NULL DEFAULT ''
         );
         """)
+        if m.DATABASE_URL:
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_idx ON users (LOWER(username))")
         for role, limit_count in ROLE_LIMIT_DEFAULTS.items():
             conn.execute("INSERT OR IGNORE INTO role_limits(role,limit_count) VALUES(?,?)", (role, limit_count))
         conn.execute("UPDATE users SET ruby_ever_granted=1 WHERE premium_tier='ruby' AND ruby_ever_granted=0")
@@ -450,7 +452,7 @@ async def v2_meta(request: Request) -> dict[str, Any]:
     with m.db() as conn:
         caps = {r["role"]: int(r["limit_count"]) for r in conn.execute("SELECT role,limit_count FROM role_limits")}
     role = role_of(user)
-    return {"app_name": "SÀN CHỨNG KHOÁN", "version": "0.2.0", "role": role,
+    return {"app_name": "SÀN CHỨNG KHOÁN", "version": "0.2.2", "role": role,
             "premium": PREMIUM, "plans": {"three_day": 3, "month": 30, "year": 365},
             "role_limits": caps, "can_admin": role in {"owner", "superadmin", "admin"},
             "can_moderate": role in {"owner", "superadmin", "admin", "coordinate"}}
@@ -1297,12 +1299,177 @@ async def v2_audit(request: Request) -> dict[str, Any]:
 @m.app.get("/api/v2/owner/backup")
 async def v2_backup(request: Request) -> JSONResponse:
     owner = require_roles(request, {"owner"})
-    tables = ["users", "holdings", "trades", "inbox", "transfers", "loans", "penalties", "penalty_requests", "chat_messages", "audit_events", "admin_requests", "moderation_reports", "report_messages", "emerald_lots", "premium_requests", "role_limits"]
+    tables = ["users", "holdings", "trades", "inbox", "transfers", "loans", "penalties", "penalty_requests", "chat_messages", "audit_events", "admin_requests", "moderation_reports", "report_messages", "emerald_lots", "premium_requests", "role_limits", "owner_support_sessions", "global_state"]
     payload: dict[str, Any] = {"format": "sanchungkhoan-web-backup-v2", "created_at": _now(), "created_by": owner["username"], "tables": {}}
+    m.persist_market_state()
     with m.db() as conn:
         for table in tables:
             payload["tables"][table] = [dict(r) for r in conn.execute(f"SELECT * FROM {table}")]
     return JSONResponse(payload, headers={"Content-Disposition": 'attachment; filename="sanh-chung-khoan-backup.json"'})
+
+
+class RestoreBackupBody(BaseModel):
+    payload: dict[str, Any]
+
+
+@m.app.post("/api/v2/owner/restore")
+async def v2_restore_backup(body: RestoreBackupBody, request: Request) -> dict[str, Any]:
+    """Restore an Owner-exported backup, validating its sole Owner and every table/column.
+
+    This supports moving demo accounts from Render's temporary SQLite database to an
+    external persistent PostgreSQL database. The current Owner session is retained.
+    """
+    m.check_same_origin(request)
+    current_owner = require_roles(request, {"owner"})
+    payload = body.payload
+    if not isinstance(payload, dict) or payload.get("format") != "sanchungkhoan-web-backup-v2":
+        raise HTTPException(400, "Tệp sao lưu không đúng định dạng SÀN CHỨNG KHOÁN WEB v2.")
+    tables = payload.get("tables")
+    if not isinstance(tables, dict) or not isinstance(tables.get("users"), list):
+        raise HTTPException(400, "Bản sao lưu không có danh sách tài khoản hợp lệ.")
+
+    allowed_tables = {
+        "users", "holdings", "trades", "inbox", "transfers", "loans", "penalties",
+        "penalty_requests", "chat_messages", "audit_events", "admin_requests",
+        "moderation_reports", "report_messages", "emerald_lots", "premium_requests",
+        "role_limits", "owner_support_sessions", "global_state",
+    }
+    if set(tables) - allowed_tables:
+        raise HTTPException(400, "Bản sao lưu chứa bảng không được hỗ trợ.")
+    if len(tables["users"]) < 1 or len(tables["users"]) > 10000:
+        raise HTTPException(400, "Số lượng tài khoản trong bản sao lưu không hợp lệ.")
+    total_rows = 0
+    for table_name, rows in tables.items():
+        if table_name not in allowed_tables or not isinstance(rows, list) or len(rows) > 200000:
+            raise HTTPException(400, f"Dữ liệu bảng {table_name} không hợp lệ hoặc quá lớn.")
+        total_rows += len(rows)
+        if total_rows > 300000:
+            raise HTTPException(400, "Bản sao lưu quá lớn; đã từ chối để bảo vệ máy chủ.")
+        if any(not isinstance(row, dict) for row in rows):
+            raise HTTPException(400, f"Bảng {table_name} có bản ghi sai cấu trúc.")
+
+    users = tables["users"]
+    usernames = set()
+    account_ids = set()
+    user_ids = set()
+    owner_rows = []
+    valid_roles = {"owner", "admin", "member"}
+    valid_roles_v2 = {"", "owner", "superadmin", "admin", "coordinate", "member"}
+    for row in users:
+        username = str(row.get("username", ""))
+        account_id = str(row.get("account_id", ""))
+        try:
+            row_id = int(row.get("id"))
+            balance = int(row.get("balance_cents"))
+        except (TypeError, ValueError, OverflowError):
+            raise HTTPException(400, "Bản sao lưu có ID hoặc số dư tài khoản không hợp lệ.")
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{3,32}", username) or username.casefold() in usernames:
+            raise HTTPException(400, "Tên đăng nhập trong bản sao lưu không hợp lệ hoặc bị trùng.")
+        if not re.fullmatch(r"\d{8}", account_id) or account_id in account_ids:
+            raise HTTPException(400, "ID tài khoản trong bản sao lưu không hợp lệ hoặc bị trùng.")
+        if row_id <= 0 or row_id in user_ids or balance < 0 or balance > 10**18:
+            raise HTTPException(400, "ID hoặc số dư trong bản sao lưu vượt phạm vi cho phép.")
+        if row.get("role") not in valid_roles or row.get("role_v2", "") not in valid_roles_v2:
+            raise HTTPException(400, f"Vai trò của tài khoản {username} không hợp lệ.")
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", str(row.get("password_hash", ""))) or not re.fullmatch(r"[0-9a-fA-F]{32}", str(row.get("salt", ""))):
+            raise HTTPException(400, f"Thông tin xác thực đã băm của tài khoản {username} không hợp lệ.")
+        usernames.add(username.casefold()); account_ids.add(account_id); user_ids.add(row_id)
+        if row.get("role") == "owner" or row.get("role_v2") == "owner":
+            owner_rows.append(row)
+    if len(owner_rows) != 1 or str(owner_rows[0].get("username", "")).casefold() != current_owner["username"].casefold():
+        raise HTTPException(400, "Bản sao lưu phải có đúng một Owner và trùng tên đăng nhập với Owner đang đăng nhập.")
+    owner_backup_id = int(owner_rows[0]["id"])
+
+    # Delete children before parents. All identifiers come from this fixed allow-list.
+    delete_order = [
+        "report_messages", "moderation_reports", "penalty_requests", "penalties", "loans",
+        "transfers", "emerald_lots", "premium_requests", "admin_requests", "owner_support_sessions",
+        "chat_messages", "audit_events", "inbox", "trades", "holdings", "sessions", "login_limits",
+        "registration_limits", "users", "role_limits", "global_state",
+    ]
+    insert_order = [
+        "users", "role_limits", "holdings", "trades", "inbox", "transfers", "loans", "penalties",
+        "penalty_requests", "chat_messages", "audit_events", "admin_requests", "moderation_reports",
+        "report_messages", "emerald_lots", "premium_requests", "owner_support_sessions", "global_state",
+    ]
+    with m.db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            saved_sessions = [dict(r) for r in conn.execute(
+                "SELECT token_hash,expires_at,created_at FROM sessions WHERE user_id=?", (current_owner["id"],)
+            )]
+            table_columns: dict[str, list[str]] = {}
+            for table_name in tables:
+                table_columns[table_name] = [str(r[1]) for r in conn.execute(f"PRAGMA table_info({table_name})")]
+                if not table_columns[table_name]:
+                    raise RuntimeError(f"Không tìm thấy cấu trúc bảng {table_name}.")
+                for row in tables[table_name]:
+                    if set(row) - set(table_columns[table_name]):
+                        raise HTTPException(400, f"Bảng {table_name} chứa cột không được hỗ trợ.")
+
+            for table_name in delete_order:
+                if table_name in tables or table_name in {"sessions", "login_limits", "registration_limits"}:
+                    conn.execute(f"DELETE FROM {table_name}")
+
+            for table_name in insert_order:
+                rows = tables.get(table_name, [])
+                if not rows:
+                    continue
+                ordered_columns = table_columns.get(table_name)
+                if ordered_columns is None:
+                    ordered_columns = [str(r[1]) for r in conn.execute(f"PRAGMA table_info({table_name})")]
+                first_columns = [col for col in ordered_columns if col in rows[0]]
+                if not first_columns:
+                    raise HTTPException(400, f"Bảng {table_name} không có cột dữ liệu hợp lệ.")
+                for row in rows:
+                    if set(row) != set(first_columns):
+                        # Backups generated by the same app version include a consistent column set per table.
+                        raise HTTPException(400, f"Các bản ghi trong bảng {table_name} không thống nhất cột.")
+                placeholders = ",".join("?" for _ in first_columns)
+                sql = f"INSERT INTO {table_name}({','.join(first_columns)}) VALUES({placeholders})"
+                conn.executemany(sql, [tuple(row[col] for col in first_columns) for row in rows])
+
+            # Rebind the current browser's Owner session to the restored Owner ID.
+            for session in saved_sessions:
+                conn.execute("INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)",
+                             (session["token_hash"], owner_backup_id, session["expires_at"], session["created_at"]))
+
+            if m.DATABASE_URL:
+                serial_tables = sorted({name for name in insert_order if "id" in table_columns.get(name, [])})
+                for table_name in serial_tables:
+                    conn.execute(
+                        f"SELECT setval(pg_get_serial_sequence('{table_name}','id'), GREATEST(COALESCE(MAX(id),1),1), MAX(id) IS NOT NULL) FROM {table_name}"
+                    )
+            restored_owner = conn.execute("SELECT * FROM users WHERE id=?", (owner_backup_id,)).fetchone()
+            if not restored_owner:
+                raise RuntimeError("Không khôi phục được tài khoản Owner.")
+            _audit(conn, restored_owner, "OWNER_RESTORE_BACKUP", details=f"Khôi phục {len(users)} tài khoản từ bản sao lưu.")
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+
+    # Apply saved global market prices to the running process, if present.
+    if "global_state" in tables:
+        with m.db() as conn:
+            saved_prices = conn.execute("SELECT value FROM global_state WHERE key='market_prices'").fetchone()
+            saved_pause = conn.execute("SELECT value FROM global_state WHERE key='market_paused'").fetchone()
+        if saved_prices and saved_prices[0]:
+            try:
+                prices = json.loads(saved_prices[0])
+                with m.market_lock:
+                    for symbol in m.ASSETS:
+                        value = float(prices.get(symbol, m.ASSETS[symbol]["price"]))
+                        if math.isfinite(value) and value > 0:
+                            m.market_prices[symbol] = value
+                            m.market_history[symbol].clear(); m.market_history[symbol].append(value)
+                    if saved_pause:
+                        m.market_paused = saved_pause[0] == "true"
+                    m.market_tick = 0
+                    m.market_plan = m.build_market_plan(m.market_prices, m.local_now())
+            except (ValueError, TypeError, json.JSONDecodeError):
+                pass
+    return {"ok": True, "restored_accounts": len(users), "message": "Đã khôi phục dữ liệu. Phiên Owner hiện tại được giữ lại."}
 
 
 @m.app.post("/api/v2/owner/support/start")

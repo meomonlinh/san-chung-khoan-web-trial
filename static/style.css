@@ -37,3 +37,11 @@
 
 
 .trial-notice{position:sticky;top:0;z-index:1000;padding:10px 16px;text-align:center;background:#4a3512;color:#ffe6a6;border-bottom:1px solid #9b7428;font-size:12px;line-height:1.5}
+
+/* Public self-registration */
+.auth-divider{display:flex;align-items:center;gap:10px;margin:22px 0 8px;color:#82a6c3;font-size:10px;font-weight:800;letter-spacing:.12em}
+.auth-divider:before,.auth-divider:after{content:"";height:1px;flex:1;background:#26394e}
+.auth-switch{text-align:center;margin-top:18px;color:var(--muted);font-size:12px}
+.text-button{background:transparent;border:0;padding:2px 4px;color:#79c8f0;text-decoration:underline;font-size:12px}
+.text-button:hover{transform:none;filter:none;color:#b4e5ff}
+#registerPanel .stack{margin-top:12px}

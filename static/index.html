@@ -8,11 +8,10 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div id="trialNotice" class="trial-notice hidden" role="status">BẢN THỬ NGHIỆM MIỄN PHÍ: máy chủ có thể tự ngủ hoặc khởi động lại. Dữ liệu tài khoản, ví và lịch sử có thể bị đặt lại; chỉ dùng tài khoản demo, không đưa mật khẩu hay dữ liệu riêng tư quan trọng lên đây.</div>
+  <div id="trialNotice" class="trial-notice hidden" role="status">BẢN THỬ NGHIỆM MIỄN PHÍ: dịch vụ có thể tự ngủ sau thời gian không có truy cập. Chỉ dùng USD ảo; không đưa mật khẩu dùng ở nơi khác hoặc dữ liệu riêng tư lên đây.</div>
   <section id="loginView" class="login-screen">
     <div class="login-card">
       <div class="brand-mark">SK</div>
-      <p class="eyebrow">VIRTUAL MARKET · WEB EDITION</p>
       <h1>SÀN CHỨNG KHOÁN</h1>
       <p class="muted">Thị trường mô phỏng dùng chung · USD ảo · Không giao dịch tiền thật</p>
       <form id="loginForm" class="stack">
@@ -20,14 +19,27 @@
         <label>Mật khẩu<input id="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Mật khẩu"></label>
         <button class="primary full" type="submit">ĐĂNG NHẬP</button>
       </form>
-      <p id="loginError" class="error"></p>
-      <p class="tiny muted">Tài khoản do Owner cấp. Đây là môi trường giả lập, không sử dụng tiền thật.</p>
+      <p id="loginError" class="error" aria-live="polite"></p>
+      <div id="registerPanel" class="hidden">
+        <div class="auth-divider"><span>TẠO TÀI KHOẢN THÀNH VIÊN</span></div>
+        <form id="registerForm" class="stack">
+          <label>Tên đăng nhập (3–32 ký tự, không dấu)<input id="registerUsername" autocomplete="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_-]+" placeholder="Ví dụ: MinhChess"></label>
+          <label>Tên hiển thị (không bắt buộc)<input id="registerDisplayName" autocomplete="nickname" maxlength="50" placeholder="Tên mọi người nhìn thấy"></label>
+          <label>Mật khẩu (ít nhất 10 ký tự)<input id="registerPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="Tạo mật khẩu riêng"></label>
+          <label>Nhập lại mật khẩu<input id="registerPasswordConfirm" type="password" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="Nhập lại mật khẩu"></label>
+          <button class="primary full" type="submit">TẠO TÀI KHOẢN</button>
+          <button id="backToLoginBtn" class="ghost full" type="button">QUAY LẠI ĐĂNG NHẬP</button>
+        </form>
+        <p id="registerError" class="error" aria-live="polite"></p>
+        <p class="tiny muted">Tài khoản mới: THÀNH VIÊN · 500.000 USD ảo · ID 8 chữ số.</p>
+      </div>
+      <div id="loginRegisterSwitch" class="auth-switch">Chưa có tài khoản? <button id="showRegisterBtn" class="text-button" type="button">Đăng ký ngay</button></div>
     </div>
   </section>
 
   <main id="appView" class="app hidden">
     <header class="topbar">
-      <div class="brand"><span class="brand-square">SK</span><div><strong>SÀN CHỨNG KHOÁN</strong><small>SHARED SIMULATED MARKET</small></div></div>
+      <div class="brand"><span class="brand-square">SK</span><div><strong>SÀN CHỨNG KHOÁN</strong><small>THỊ TRƯỜNG MÔ PHỎNG</small></div></div>
       <div class="market-live"><i class="live-dot"></i><span id="marketStatus">Đang kết nối thị trường...</span></div>
       <div class="top-actions">
         <span id="userBadge" class="user-badge">...</span>
@@ -77,19 +89,18 @@
             <div class="analysis-head"><strong>PHÂN TÍCH THỊ TRƯỜNG</strong><span id="marketClock">--:--:--</span></div>
             <div id="analysisText" class="analysis-text">Đang chờ dữ liệu...</div>
             <div class="ma-values" id="maValues"></div>
-            <div id="forecastHint" class="notice-line"></div>
           </section>
           <section class="trade-card panel">
             <div class="trade-input"><label for="quantity">Khối lượng</label><input id="quantity" type="number" min="0.000001" step="0.000001" value="0.1"></div>
             <div class="trade-buttons"><button id="buyBtn" class="buy">MUA</button><button id="sellBtn" class="sell">BÁN</button></div>
-            <p class="tiny muted">Tất cả giá và số dư đều là số liệu giả lập. Giao dịch dùng giá chung từ máy chủ.</p>
           </section>
         </section>
 
         <aside class="panel wallet-panel">
           <div class="panel-heading"><span>VÍ TÀI SẢN & LÃI/LỖ</span></div>
-          <div class="stat-box"><small>TỔNG TÀI SẢN (NET WORTH)</small><strong id="netWorth">$500,000.00</strong></div>
+          <div class="stat-box"><small>TỔNG TÀI SẢN</small><strong id="netWorth">$500,000.00</strong></div>
           <div class="wallet-stat"><small>Tiền mặt khả dụng</small><strong id="cashBalance">$500,000.00</strong></div>
+          <button id="walletAdjustBtn" class="secondary full hidden" type="button">ĐIỀU CHỈNH VÍ QUẢN TRỊ ± USD</button>
           <div class="wallet-stat"><small>Giá trị tài sản đang giữ</small><strong id="holdingsValue">$0.00</strong></div>
           <div class="wallet-stat"><small>Nợ sàn</small><strong id="exchangeDebt">$0.00</strong></div>
           <div class="holdings-title">TÀI SẢN ĐANG SỞ HỮU</div>
@@ -100,7 +111,7 @@
     </section>
 
     <section id="premiumTab" class="tab-page hidden">
-      <div class="page-heading"><div><p class="eyebrow">MEMBERSHIP CENTER</p><h2>GÓI THÀNH VIÊN PREMIUM</h2><p class="muted">Giá và thưởng theo bản code chính. Gói năm tăng thưởng ngày thường 20%.</p></div><div id="premiumStatus" class="status-chip">Chưa có Premium</div></div>
+      <div class="page-heading"><div><h2>GÓI THÀNH VIÊN PREMIUM</h2></div><div id="premiumStatus" class="status-chip">Chưa có Premium</div></div>
       <div class="premium-grid" id="premiumGrid"></div>
       <section class="panel form-panel">
         <h3>Mua / Gia hạn Premium</h3>
@@ -113,11 +124,11 @@
         <button id="giftPremiumBtn" class="secondary">XÁC NHẬN TẶNG PREMIUM (+15% PHÍ)</button>
         <p class="tiny muted">Phụ phí 15% do người gửi trả và bị xóa khỏi hệ thống; người nhận không bị trừ tiền.</p>
       </section>
-      <section id="specialPremiumPanel" class="panel form-panel hidden"><h3>Gói đặc biệt · Chỉ dành cho quy trình quản trị</h3><p class="muted tiny">RUBY: Owner cấp hoặc SPADMIN gửi yêu cầu để Owner duyệt. LỤC BẢO: chỉ Owner cấp; gói tặng người khác có hiệu lực 1 ngày, Owner có thể kích hoạt vĩnh viễn cho chính mình.</p><div class="form-grid"><label>ID tài khoản<input id="specialTargetId" maxlength="8"></label><label>Gói<select id="specialTier"><option value="ruby">RUBY</option><option value="emerald">LỤC BẢO</option></select></label></div><button id="specialGrantBtn" class="secondary">CẤP / GỬI YÊU CẦU</button><button id="ownerEmeraldSelfBtn" class="ghost owner-only hidden">OWNER KÍCH HOẠT LỤC BẢO VĨNH VIỄN</button><div id="premiumRequestsBox"></div></section>
+      <section id="specialPremiumPanel" class="panel form-panel hidden"><h3>Gói đặc biệt</h3><p class="muted tiny">RUBY: Owner cấp hoặc SPADMIN gửi yêu cầu duyệt. LỤC BẢO: Owner cấp; quà tặng có hạn 1 ngày, Owner có thể tự kích hoạt vĩnh viễn.</p><div class="form-grid"><label>ID tài khoản<input id="specialTargetId" maxlength="8"></label><label>Gói<select id="specialTier"><option value="ruby">RUBY</option><option value="emerald">LỤC BẢO</option></select></label></div><button id="specialGrantBtn" class="secondary">CẤP / GỬI YÊU CẦU</button><button id="ownerEmeraldSelfBtn" class="ghost owner-only hidden">OWNER KÍCH HOẠT LỤC BẢO VĨNH VIỄN</button><div id="premiumRequestsBox"></div></section>
     </section>
 
     <section id="transferTab" class="tab-page hidden">
-      <div class="page-heading"><div><p class="eyebrow">ACCOUNT TO ACCOUNT</p><h2>CHUYỂN TIỀN / CHO NỢ</h2><p class="muted">Xác minh ID 8 chữ số và tên hiển thị trước khi chuyển.</p></div></div>
+      <div class="page-heading"><div><h2>CHUYỂN TIỀN / CHO NỢ</h2><p class="muted">Xác minh ID 8 chữ số và tên hiển thị trước khi chuyển.</p></div></div>
       <section class="panel form-panel narrow-panel">
         <div class="form-grid"><label>Số tiền USD<input id="transferAmount" type="number" min="0.01" step="0.01" placeholder="Ví dụ 1000"></label><label>ID người nhận<input id="transferRecipientId" maxlength="8" inputmode="numeric" placeholder="8 chữ số"></label><label class="wide">Tên hiển thị người nhận<input id="transferRecipientName" maxlength="80"></label><label>Hình thức<select id="transferAction"><option value="transfer">Chuyển tiền (người nhận 85%)</option><option value="loan">Cho nợ (không tính phí)</option></select></label></div>
         <div class="notice-line">Chuyển tiền thường: 15% bị xóa khỏi hệ thống. Cho nợ: người nhận nhận đủ, khoản nợ được ghi nhận.</div>
@@ -127,28 +138,28 @@
     </section>
 
     <section id="chatTab" class="tab-page hidden">
-      <div class="page-heading"><div><p class="eyebrow">COMMUNITY</p><h2>HỆ THỐNG CHAT</h2><p class="muted">Ba phòng chat có quyền truy cập riêng theo vai trò và cấp Premium.</p></div></div>
+      <div class="page-heading"><div><h2>HỆ THỐNG CHAT</h2><p class="muted">Quyền truy cập tùy vai trò và cấp Premium.</p></div></div>
       <section class="panel form-panel chat-panel"><div class="chat-toolbar"><label>Phòng chat<select id="chatRoom"><option value="total">CHAT TỔNG</option><option value="members">CHAT THÀNH VIÊN</option><option value="qtv">CHAT QTV</option></select></label><button id="refreshChatBtn" class="ghost">TẢI LẠI</button></div><div id="chatMessages" class="chat-messages"></div><form id="chatForm" class="chat-send"><input id="chatText" maxlength="500" placeholder="Nhập tin nhắn..." required><button class="primary" type="submit">GỬI</button></form></section>
     </section>
 
     <section id="profileTab" class="tab-page hidden">
-      <div class="page-heading"><div><p class="eyebrow">ACCOUNT CENTER</p><h2>HỒ SƠ & CÀI ĐẶT</h2></div></div>
+      <div class="page-heading"><div><h2>HỒ SƠ & CÀI ĐẶT</h2></div></div>
       <section class="panel form-panel narrow-panel"><div id="profileAccountInfo" class="account-info"></div><form id="profileForm" class="stack"><label>Tên hiển thị<input id="profileName" maxlength="50" required></label><div class="form-grid"><label>Tuổi (tùy chọn)<input id="profileAge" maxlength="3" inputmode="numeric"></label><label>Khu vực (tùy chọn)<input id="profileLocation" maxlength="100"></label></div><label>Giới thiệu (tùy chọn)<textarea id="profileBio" maxlength="160" rows="3"></textarea></label><button class="primary" type="submit">LƯU HỒ SƠ</button></form><hr><h3>Thông báo</h3><label class="inline-check"><input id="soundMuted" type="checkbox"> Tắt âm thanh thông báo</label><label>Âm lượng <input id="soundVolume" type="range" min="0" max="100" step="1"></label><button id="saveSettingsBtn" class="secondary">LƯU CÀI ĐẶT</button><div class="danger-zone"><button id="requestAdminBtn" class="ghost">GỬI YÊU CẦU XIN QUYỀN ADMIN</button></div></section>
     </section>
 
     <section id="moderationTab" class="tab-page hidden">
-      <div class="page-heading"><div><p class="eyebrow">TRUST & SAFETY</p><h2>KIỂM DUYỆT / BÁO CÁO</h2><p class="muted">Gửi báo cáo bằng ID và tên hiển thị. Các vai trò quản trị có công cụ xử lý phù hợp quyền hạn.</p></div></div>
+      <div class="page-heading"><div><h2>KIỂM DUYỆT / BÁO CÁO</h2></div></div>
       <section class="panel form-panel"><h3>Gửi báo cáo</h3><div class="form-grid"><label>ID tài khoản<input id="reportTargetId" maxlength="8"></label><label>Tên hiển thị<input id="reportTargetName" maxlength="80"></label><label class="wide">Nội dung / lý do<textarea id="reportReason" rows="3" maxlength="500"></textarea></label><label class="inline-check"><input id="reportRequestBan" type="checkbox"> Đề nghị xem xét khóa tài khoản</label></div><button id="sendReportBtn" class="primary">GỬI BÁO CÁO</button></section>
       <section class="panel form-panel"><div class="section-title-row"><h3>Hồ sơ báo cáo</h3><button id="refreshReportsBtn" class="ghost">TẢI LẠI</button></div><div id="reportsList"></div></section>
-      <section id="staffTools" class="panel form-panel hidden"><h3>Công cụ QTV · Phạt tài khoản</h3><div class="notice-line"><b>Điều chỉnh ví quản trị:</b> cộng hoặc trừ USD ảo cho chính tài khoản quản trị (giới hạn mỗi lần theo quyền).</div><button id="adminCashBtn" class="secondary">ĐIỀU CHỈNH SỐ DƯ CỦA TÔI ± USD</button><div class="form-grid"><label>ID mục tiêu<input id="penaltyTargetId" maxlength="8"></label><label>Mức phạt USD hoặc % số dư<input id="penaltyAmount" placeholder="1000000 hoặc 10%"></label><label class="wide">Lý do<textarea id="penaltyReason" rows="2" maxlength="500"></textarea></label></div><button id="applyPenaltyBtn" class="danger">ÁP DỤNG / GỬI YÊU CẦU PHẠT</button><div id="penaltyRequests"></div><hr><h3>Khóa / mở khóa thành viên</h3><div class="form-grid"><label>ID mục tiêu<input id="banTargetId" maxlength="8"></label><label>Tên hiển thị<input id="banTargetName" maxlength="80"></label><label class="wide">Lý do (tối thiểu 8 ký tự)<input id="banReason" maxlength="500"></label><label>Thao tác<select id="banAction"><option value="true">Khóa</option><option value="false">Mở khóa</option></select></label></div><button id="banBtn" class="secondary">THỰC HIỆN</button></section>
+      <section id="staffTools" class="panel form-panel hidden"><h3>Công cụ QTV · Phạt tài khoản</h3><button id="adminCashBtn" class="secondary">ĐIỀU CHỈNH SỐ DƯ CỦA TÔI ± USD</button><div class="form-grid"><label>ID mục tiêu<input id="penaltyTargetId" maxlength="8"></label><label>Mức phạt USD hoặc % số dư<input id="penaltyAmount" placeholder="1000000 hoặc 10%"></label><label class="wide">Lý do<textarea id="penaltyReason" rows="2" maxlength="500"></textarea></label></div><button id="applyPenaltyBtn" class="danger">ÁP DỤNG / GỬI YÊU CẦU PHẠT</button><div id="penaltyRequests"></div><hr><h3>Khóa / mở khóa thành viên</h3><div class="form-grid"><label>ID mục tiêu<input id="banTargetId" maxlength="8"></label><label>Tên hiển thị<input id="banTargetName" maxlength="80"></label><label class="wide">Lý do (tối thiểu 8 ký tự)<input id="banReason" maxlength="500"></label><label>Thao tác<select id="banAction"><option value="true">Khóa</option><option value="false">Mở khóa</option></select></label></div><button id="banBtn" class="secondary">THỰC HIỆN</button></section>
     </section>
 
     <section id="ownerTab" class="tab-page hidden">
-      <div class="page-heading"><div><p class="eyebrow">OWNER CONSOLE</p><h2>QUẢN TRỊ SÀN</h2><p class="muted">Quản lý tài khoản, vai trò, hạn mức, phiên hỗ trợ và nhật ký. Không có chức năng xem mật khẩu.</p></div><button id="backupBtn" class="secondary">SAO LƯU DỮ LIỆU</button></div>
+      <div class="page-heading"><div><h2>QUẢN TRỊ SÀN</h2></div><div class="row-actions"><button id="backupBtn" class="secondary">SAO LƯU DỮ LIỆU</button><button id="restoreBtn" class="ghost">KHÔI PHỤC BẢN SAO LƯU</button><input id="restoreFile" type="file" accept=".json,application/json" class="hidden"></div></div>
       <section class="panel form-panel"><h3>Tạo tài khoản thành viên</h3><div class="form-grid"><label>Tên đăng nhập<input id="newUsername" maxlength="32"></label><label>Mật khẩu tạm<input id="newPassword" type="password" minlength="10" maxlength="128"></label><label>Tên hiển thị<input id="newDisplayName" maxlength="50"></label></div><button id="createAccountBtn" class="primary">TẠO TÀI KHOẢN</button></section>
       <section class="panel form-panel"><div class="section-title-row"><h3>Danh sách tài khoản</h3><button id="reloadAccountsBtn" class="ghost">TẢI LẠI</button></div><div id="accountsTable" class="table-wrap"></div></section>
       <section class="panel form-panel"><h3>Hạn mức chức vụ</h3><div class="form-grid"><label>SPADMIN tối đa<input id="limitSuperadmin" type="number" min="1" max="1000"></label><label>ADMIN tối đa<input id="limitAdmin" type="number" min="1" max="1000"></label><label>TỌA ĐỘ tối đa<input id="limitCoordinate" type="number" min="1" max="1000"></label></div><button id="saveLimitsBtn" class="secondary">LƯU HẠN MỨC</button></section>
-      <section class="panel form-panel"><h3>Phiên hỗ trợ Owner</h3><div id="supportState"></div><p class="tiny muted">Phiên hỗ trợ được ghi nhật ký và không yêu cầu/hiển thị mật khẩu của tài khoản đích.</p><button id="endSupportBtn" class="danger hidden">KẾT THÚC PHIÊN HỖ TRỢ</button></section>
+      <section class="panel form-panel"><h3>Phiên hỗ trợ Owner</h3><div id="supportState"></div><p class="tiny muted">Mọi phiên hỗ trợ đều được ghi nhật ký.</p><button id="endSupportBtn" class="danger hidden">KẾT THÚC PHIÊN HỖ TRỢ</button></section>
       <section class="panel form-panel"><div class="section-title-row"><h3>Yêu cầu xin Admin</h3><button id="reloadAdminRequestsBtn" class="ghost">TẢI LẠI</button></div><div id="adminRequests"></div></section>
       <section class="panel form-panel"><div class="section-title-row"><h3>Yêu cầu RUBY</h3><button id="reloadPremiumRequestsBtn" class="ghost">TẢI LẠI</button></div><div id="rubyRequests"></div></section>
       <section class="panel form-panel"><div class="section-title-row"><h3>Nhật ký quản trị</h3><button id="reloadAuditBtn" class="ghost">TẢI LẠI</button></div><div id="auditList" class="table-wrap"></div></section>

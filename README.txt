@@ -1,5 +1,6 @@
-SÀN CHỨNG KHOÁN - WEB EDITION 0.2.1-TRIAL
+SÀN CHỨNG KHOÁN - WEB EDITION 0.2.4-PERSISTENT DB · CLEAN UI
 =================================
+GHI CHU GIAO DIEN 0.2.4: da bo cac dong chu thich lap lai/khong can thiet; giu lai canh bao thu nghiem, phi, dieu kien giao dich va quyen loi Premium.
 
 ĐÂY LÀ GÌ?
 - Bản web nâng cấp từ chương trình desktop Pygame do người dùng cung cấp.
@@ -10,7 +11,9 @@ SÀN CHỨNG KHOÁN - WEB EDITION 0.2.1-TRIAL
 
 CÁC NHÓM CHỨC NĂNG ĐÃ CÓ TRONG WEB 0.2
 1. Tài khoản và bảo mật
-   - Owner cấp tài khoản; không có đăng ký công khai.
+   - Có đăng ký công khai cho THÀNH VIÊN; tài khoản mới nhận 500.000 USD ảo và ID 8 chữ số.
+   - Đăng ký giới hạn 10 tài khoản / địa chỉ mạng / giờ; tài khoản tự đăng ký không thể chọn quyền Admin/Owner.
+   - Owner vẫn có thể tạo tài khoản thủ công trong khu vực quản trị.
    - ID tài khoản 8 chữ số.
    - Mật khẩu băm PBKDF2-HMAC-SHA256 + salt; không lưu chữ thường.
    - Cookie HttpOnly, SameSite=Strict; giới hạn đăng nhập sai.
@@ -52,21 +55,23 @@ CÁC NHÓM CHỨC NĂNG ĐÃ CÓ TRONG WEB 0.2
    - Hồ sơ tên hiển thị, tuổi/khu vực/giới thiệu tùy chọn.
    - Cài đặt tắt âm lượng/thay đổi mức âm lượng được lưu.
    - Owner xem danh sách tài khoản, cấp/thu hồi quyền Premium, hỗ trợ tài khoản có ghi nhật ký.
-   - Owner xem nhật ký quản trị và tải bản sao lưu JSON.
+   - Owner xem nhật ký quản trị, tải bản sao lưu JSON và khôi phục bản sao lưu JSON từ giao diện web.
+   - Có nút điều chỉnh ví quản trị ± USD ngay trong khung Ví trên trang Thị trường; Owner có nút ± USD cho từng tài khoản trong bảng quản trị.
    - Không có tính năng xem mật khẩu hay đăng nhập bằng mật khẩu của tài khoản khác.
 
 CÁC PHẦN CHƯA TƯƠNG ĐƯƠNG HOÀN TOÀN VỚI PYGAME
 - Giao diện đã được thiết kế lại cho trình duyệt; bố cục/cửa sổ kéo thả, modal và thao tác chuột của Pygame không được sao chép nguyên pixel.
 - Cú sốc giá cực đoan theo từng sự kiện và lớp cảnh báo/overlay đặc biệt của desktop chưa được chuyển đầy đủ.
 - Phiên hỗ trợ Owner hiện là phiên kiểm tra thông tin có ghi nhật ký, chưa chuyển sang cơ chế thao tác mọi màn hình dưới danh tính tài khoản đích như desktop.
-- Web đã có tải bản sao lưu; chức năng khôi phục bản sao lưu từ giao diện web chưa có.
+- Web hỗ trợ tải và khôi phục bản sao lưu JSON trong giao diện Owner; cần sao lưu riêng tư và chọn đúng tệp trước khi khôi phục.
 - Âm lượng/tắt âm thanh được lưu, nhưng âm thanh thông báo trình duyệt chưa tương đương chuông và overlay Pygame.
 - Một số hộp thoại/slider quản trị, xác nhận hồ sơ và quy trình phụ trong desktop đã được giản lược thành biểu mẫu web.
 - Tệp accounts_sandbox.json của Pygame không tự động nhập vào SQLite. Cần quy trình chuyển đổi riêng nếu muốn mang tài khoản desktop sang web.
 - Không có đồng bộ dữ liệu tự động giữa bản desktop và web.
 - Bản Render Free chỉ là môi trường thử nghiệm: dịch vụ ngủ sau 15 phút không có inbound traffic và có thể khởi động lại.
-- Render Free không có Persistent Disk; SQLite đặt ở /tmp có thể mất dữ liệu khi ngủ/khởi động lại/triển khai. Không dùng dữ liệu Owner thật.
-- Có bootstrap Owner qua biến môi trường bí mật INITIAL_OWNER_USERNAME / INITIAL_OWNER_PASSWORD để tạo lại Owner khi database thử nghiệm trống.
+- Bản 0.2.4 hỗ trợ PostgreSQL qua DATABASE_URL. Khi REQUIRE_DATABASE_URL=true, server không khởi động nếu chưa cấu hình database bền vững, tránh quay lại SQLite trên ổ tạm.
+- Owner có thể sao lưu trước khi nâng cấp và khôi phục backup sang PostgreSQL sau khi deploy.
+- Có bootstrap Owner qua biến môi trường bí mật INITIAL_OWNER_USERNAME / INITIAL_OWNER_PASSWORD để tạo Owner lần đầu trong database mới.
 - Đã kiểm thử Python/API; chưa chạy kiểm thử trình duyệt end-to-end trên Chrome/Edge thật.
 
 CÀI TRÊN WINDOWS
@@ -100,7 +105,7 @@ TRIỂN KHAI INTERNET
 - render.yaml hiện cấu hình Render Free cho BẢN THỬ NGHIỆM, không phải môi trường sản xuất hay 24/7.
 - Dịch vụ Free tự ngủ sau 15 phút không có inbound traffic; request định kỳ khi người chơi đang đăng nhập sẽ giữ tương tác hoạt động, nhưng không bảo đảm luôn bật.
 - Free không có Persistent Disk. SQLite ở /tmp có thể mất dữ liệu sau spin-down, restart hoặc redeploy. Chỉ dùng tài khoản demo.
-- Chưa chuyển SQLite sang PostgreSQL; không được giả định dữ liệu trên Render Free sẽ bền vững. Render Free Postgres cũng có thời hạn và giới hạn riêng.
+- Bản 0.2.4 đã có adapter PostgreSQL, nhưng cần cấu hình DATABASE_URL và xác minh /api/health trả persistent_storage=true. Không có kiểm thử kết nối với database cloud thật trong gói này.
 - SQLite và trạng thái thị trường hiện thiết kế cho một tiến trình máy chủ; không chạy nhiều bản sao cùng dùng một SQLite file qua mạng.
 - Khi dùng Internet, chỉ nhập dữ liệu mô phỏng; không dùng mật khẩu trùng với dịch vụ khác hoặc dữ liệu cá nhân quan trọng.
 - Chỉ triển khai dữ liệu mô phỏng, không dùng tiền thật hoặc thông tin tài chính cá nhân.

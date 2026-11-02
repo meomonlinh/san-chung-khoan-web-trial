@@ -77,6 +77,22 @@ document.querySelectorAll('.pill[data-category]').forEach(b=>b.addEventListener(
   renderAssets();
 }));
 
+function showLoginPanel() {
+  $('loginForm').classList.remove('hidden');
+  $('registerPanel').classList.add('hidden');
+  $('loginRegisterSwitch').classList.remove('hidden');
+  setText('loginError','');
+  setText('registerError','');
+}
+function showRegisterPanel() {
+  $('loginForm').classList.add('hidden');
+  $('registerPanel').classList.remove('hidden');
+  $('loginRegisterSwitch').classList.add('hidden');
+  setText('loginError','');
+  setText('registerError','');
+}
+$('showRegisterBtn').addEventListener('click', showRegisterPanel);
+$('backToLoginBtn').addEventListener('click', showLoginPanel);
 $('loginForm').addEventListener('submit', async e=>{
   e.preventDefault(); setText('loginError','');
   try {
@@ -85,10 +101,24 @@ $('loginForm').addEventListener('submit', async e=>{
     await boot();
   } catch(err) { setText('loginError',err.message); }
 });
+$('registerForm').addEventListener('submit', async e=>{
+  e.preventDefault(); setText('registerError','');
+  const password=$('registerPassword').value;
+  if(password!==$('registerPasswordConfirm').value){setText('registerError','Hai mật khẩu không khớp.');return;}
+  try {
+    await api('/api/register',{method:'POST',body:JSON.stringify({
+      username:$('registerUsername').value.trim(),
+      display_name:$('registerDisplayName').value.trim(),
+      password
+    })});
+    $('registerPassword').value=''; $('registerPasswordConfirm').value='';
+    await boot();
+  } catch(err) { setText('registerError',err.message); }
+});
 $('logoutBtn').addEventListener('click', async()=>{
   try { await api('/api/logout',{method:'POST',body:'{}'}); } catch(err) { toast(err.message,'error'); }
   disconnectSocket(); clearInterval(refreshTimer); me=null;
-  $('appView').classList.add('hidden'); $('loginView').classList.remove('hidden'); $('password').value='';
+  $('appView').classList.add('hidden'); $('loginView').classList.remove('hidden'); $('password').value=''; showLoginPanel();
 });
 $('inboxBtn').addEventListener('click',openInbox);
 $('forecastBtn').addEventListener('click',openForecast);
@@ -111,8 +141,11 @@ $('sendReportBtn').addEventListener('click',sendReport);
 $('refreshReportsBtn').addEventListener('click',loadReports);
 $('applyPenaltyBtn').addEventListener('click',applyPenalty);
 $('adminCashBtn').addEventListener('click',adjustAdminCash);
+$('walletAdjustBtn').addEventListener('click',adjustAdminCash);
 $('banBtn').addEventListener('click',banAccount);
 $('backupBtn').addEventListener('click',downloadBackup);
+$('restoreBtn').addEventListener('click',()=>{if(canOwner())$('restoreFile').click();});
+$('restoreFile').addEventListener('change',restoreBackupFile);
 $('createAccountBtn').addEventListener('click',createOwnerAccount);
 $('reloadAccountsBtn').addEventListener('click',loadOwnerAccounts);
 $('saveLimitsBtn').addEventListener('click',saveRoleLimits);
@@ -124,13 +157,20 @@ $('reloadAuditBtn').addEventListener('click',loadAudit);
 async function boot() {
   try {
     const health = await api('/api/health');
-    if (health.trial_mode === 'true') setHidden('trialNotice', false);
+    if (health.trial_mode === 'true') {
+      setHidden('trialNotice', false);
+      if (health.persistent_storage) {
+        setText('trialNotice', 'BẢN THỬ NGHIỆM: máy chủ có thể tự ngủ hoặc khởi động lại; tài khoản, ví và lịch sử được lưu ở PostgreSQL riêng. Website không bảo đảm 24/7; toàn bộ tiền và tài sản chỉ là số liệu mô phỏng.');
+      } else {
+        setText('trialNotice', 'BẢN THỬ NGHIỆM: đang dùng SQLite trên ổ tạm. Tài khoản, ví và lịch sử có thể mất khi máy chủ ngủ, khởi động lại hoặc triển khai lại. Chỉ dùng dữ liệu demo.');
+      }
+    }
   } catch (err) { console.warn('Health check unavailable', err); }
   try {
     me = await api('/api/v2/me');
     meta = await api('/api/v2/meta');
   } catch(err) {
-    $('appView').classList.add('hidden'); $('loginView').classList.remove('hidden');
+    $('appView').classList.add('hidden'); $('loginView').classList.remove('hidden'); showLoginPanel();
     if (err.message && !/đăng nhập/i.test(err.message)) setText('loginError',err.message);
     return;
   }
@@ -151,6 +191,7 @@ function renderIdentity() {
   setHidden('ownerEmeraldSelfBtn', !canOwner());
   setHidden('staffTools', !canStaff());
   setHidden('adminCashBtn', !canManage());
+  setHidden('walletAdjustBtn', !canManage());
   document.querySelectorAll('.owner-only').forEach(el=>el.classList.toggle('hidden',!canOwner()));
   document.querySelectorAll('.tab.owner-only').forEach(el=>el.classList.toggle('hidden',!canOwner()));
   $('chatRoom').querySelector('option[value="qtv"]').disabled=!canStaff();
@@ -203,7 +244,6 @@ function renderMarket(data) {
   renderAssets();drawChart(vals,mas);
   $('pauseBtn').textContent=data.paused?'CHẠY TOÀN SÀN':'DỪNG TOÀN SÀN';
   $('buyBtn').disabled=data.paused||!a.is_open; $('sellBtn').disabled=data.paused||!a.is_open;
-  setText('forecastHint',me?.premium_tier?`Quyền dự báo: ${tierName(me.premium_tier)} · Mức thời gian theo gói.`:'Dự báo theo quyền tài khoản và cấp Premium.');
 }
 function drawChart(values,mas) {
   const canvas=$('priceChart'); if(!canvas)return;
@@ -478,11 +518,26 @@ async function loadOwnerConsole(){
   await Promise.allSettled([loadOwnerAccounts(),loadSupportState(),loadAdminRequests(),loadPremiumRequests(),loadAudit()]);
 }
 async function downloadBackup(){
+  if(!canOwner())return;
   try{
     const response=await fetch('/api/v2/owner/backup',{credentials:'same-origin'});
     if(!response.ok){const data=await response.json().catch(()=>({detail:'Không thể sao lưu.'}));throw new Error(data.detail||'Không thể sao lưu.');}
-    const blob=await response.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='sanh-chung-khoan-backup.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Đã tải bản sao lưu dữ liệu.');
+    const blob=await response.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='sanh-chung-khoan-backup.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Đã tải backup. Tệp có hash mật khẩu và dữ liệu tài khoản; giữ riêng tư, không đưa lên GitHub.');
   }catch(err){toast(err.message,'error');}
+}
+async function restoreBackupFile(event){
+  if(!canOwner())return;
+  const file=event.target.files?.[0];event.target.value='';
+  if(!file)return;
+  if(file.size>40*1024*1024){toast('Tệp sao lưu vượt 40 MB.','error');return;}
+  if(!confirm('Khôi phục sẽ thay thế dữ liệu tài khoản, số dư, tài sản, lịch sử và dữ liệu quản trị hiện tại bằng dữ liệu trong tệp. Hãy chắc chắn đã chọn đúng bản sao lưu. Tiếp tục?'))return;
+  try{
+    const payload=JSON.parse(await file.text());
+    const result=await api('/api/v2/owner/restore',{method:'POST',body:JSON.stringify({payload})});
+    toast(`Đã khôi phục ${result.restored_accounts} tài khoản.`);
+    await boot();
+    await loadOwnerConsole();
+  }catch(err){toast(err.message||'Không thể đọc hoặc khôi phục bản sao lưu.','error');}
 }
 window.addEventListener('resize',()=>{if(market)renderMarket(market);});
 window.addEventListener('beforeunload',disconnectSocket);

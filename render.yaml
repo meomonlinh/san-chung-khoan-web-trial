@@ -5,8 +5,10 @@ services:
     plan: free
     healthCheckPath: /api/health
     envVars:
-      - key: DATABASE_PATH
-        value: /tmp/market_web.sqlite3
+      - key: DATABASE_URL
+        sync: false
+      - key: REQUIRE_DATABASE_URL
+        value: "true"
       - key: COOKIE_SECURE
         value: "true"
       - key: TRIAL_MODE

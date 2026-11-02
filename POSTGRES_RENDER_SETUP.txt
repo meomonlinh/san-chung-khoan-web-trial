@@ -1,0 +1,39 @@
+HƯỚNG DẪN NỐI DATABASE BỀN VỮNG CHO RENDER FREE
+===============================================
+
+Bản 0.2.4 có hỗ trợ PostgreSQL qua biến bí mật DATABASE_URL.
+Không gửi connection string cho người khác và không commit nó lên GitHub.
+
+TRƯỚC KHI CẬP NHẬT CODE
+1. Trên website bản cũ, đăng nhập Owner.
+2. Vào Quản trị Owner → SAO LƯU DỮ LIỆU.
+3. Giữ file sanh-chung-khoan-backup.json riêng tư. File chứa hash mật khẩu và dữ liệu tài khoản.
+
+TẠO DATABASE
+1. Nhờ bố mẹ/người giám hộ cùng xem xét và quản lý tài khoản nhà cung cấp PostgreSQL.
+2. Tạo project PostgreSQL mới ở nhà cung cấp hỗ trợ gói phù hợp.
+3. Lấy connection string dạng postgresql://... (SSL bắt buộc, ví dụ sslmode=require).
+4. Không gửi connection string vào chat, không lưu trong mã nguồn và không đưa lên GitHub.
+
+KẾT NỐI RENDER
+1. Mở Render Dashboard → Web Service SÀN CHỨNG KHOÁN → Environment.
+2. Thêm DATABASE_URL với connection string vừa tạo.
+3. Đặt REQUIRE_DATABASE_URL=true.
+4. Đảm bảo COOKIE_SECURE=true, TRIAL_MODE=true; giữ nguyên INITIAL_OWNER_USERNAME và INITIAL_OWNER_PASSWORD.
+5. Cập nhật code 0.2.4 lên GitHub và chờ Render deploy.
+6. Kiểm tra GET /api/health: cần có database_backend=postgresql và persistent_storage=true.
+7. Nếu dịch vụ không khởi động hoặc health chưa đúng, dừng thử nghiệm và kiểm tra lại DATABASE_URL. Không nhập dữ liệu quan trọng khi persistent_storage=false.
+
+KHÔI PHỤC BACKUP
+1. Đăng nhập Owner bằng username/password bootstrap đã cấu hình.
+2. Vào Quản trị Owner → KHÔI PHỤC BẢN SAO LƯU.
+3. Chọn file JSON backup đã tải từ bản cũ.
+4. Đọc kỹ hộp xác nhận: thao tác sẽ thay thế dữ liệu đang có bằng backup.
+5. Sau khi thành công, kiểm tra số dư, holdings, lịch sử, tài khoản và chat.
+6. Giữ file backup gốc an toàn.
+
+LƯU Ý RẤT QUAN TRỌNG
+- Render Free vẫn tự ngủ sau 15 phút không có inbound traffic; persistent DB giữ dữ liệu, không làm web service luôn bật 24/7.
+- Gói DB free có giới hạn dung lượng/compute. Khi hết quota, dịch vụ DB có thể tạm ngưng; không xem đây là lưu trữ vô hạn.
+- PostgreSQL adapter được kiểm tra bằng unit tests cho SQL translation và các test nghiệp vụ SQLite, nhưng chưa kết nối thử với PostgreSQL cloud thật trong gói này. Bắt buộc xác nhận /api/health và chạy giao dịch demo sau khi kết nối.
+- Toàn bộ số dư là USD ảo; không có tiền thật.
